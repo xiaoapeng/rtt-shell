@@ -20,11 +20,11 @@ extern "C"{
 
 #include <stdint.h>
 
-extern int JLINK_EMU_SelectByUSBSN(unsigned usbsn);
+extern int JLINK_EMU_SelectByUSBSN(unsigned int usbsn);
 extern int JLINK_Open(void);
 extern int JLINK_Close(void);
-extern int JLINK_GetSN(unsigned *sn);
-extern int JLINK_SetSpeed(unsigned speed);
+extern int JLINK_GetSN(unsigned int *sn);
+extern int JLINK_SetSpeed(unsigned int speed);
 extern int JLINK_TIF_Select(int tif);
 extern int JLINK_Connect(void);
 extern int JLINK_ExecCommand(const char *in, char *out, int size);

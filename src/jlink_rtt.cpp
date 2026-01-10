@@ -9,10 +9,13 @@
  */
 
 #include <cstdio>
-#include <thread>
 #include <queue>
 #include <vector>
+#include <mutex>
+#include <condition_variable>
 #include <chrono>
+#include <thread>
+
 #include "jlink_api.h"
 
 #define RTT_FIND_BUFFER_MAX_RETRY_COUNT 100
@@ -20,7 +23,7 @@
 
 static int s_rtt_up_buffer_num = 0;
 static int s_rtt_down_buffer_num = 0;
-static int s_rtt_tx_channel = 0;
+static int s_rtt_tx_channel = -1;
 static int s_rtt_rx_channel = 0;
 static std::mutex s_mtx;
 static std::condition_variable s_cv;
@@ -28,18 +31,21 @@ static std::queue<std::vector<char>> s_rtt_rx_queue;
 static char s_rtt_rx_buf[1024];
 static bool s_req_stop = false;
 static std::thread *s_rtt_thread = nullptr;
-extern "C" void (*s_rx_cb)(char *data, int len) = nullptr;
+
+extern "C" { 
+    static void (*s_rx_cb)(const char *data, size_t len) = nullptr;
+}
 static void rtt_thread(void){
     enum rtt_read_state{
         RTT_RECV_IDLE = 0,
         RTT_RECV_TRY_READ = 1,
     };
     rtt_read_state read_state = RTT_RECV_TRY_READ;
+    std::vector<char> data;
     while(true){
-        std::vector<char> data;
         while(true){
             std::unique_lock<std::mutex> lck(s_mtx);
-            if(!s_rtt_rx_queue.empty()){
+            if(!s_rtt_rx_queue.empty() || !data.empty()){
                 /* 合并queue里面的多个数据包到data */
                 while(!s_rtt_rx_queue.empty()){
                     data.insert(data.end(), s_rtt_rx_queue.front().begin(), s_rtt_rx_queue.front().end());
@@ -57,15 +63,22 @@ static void rtt_thread(void){
             read_state = RTT_RECV_TRY_READ;
         }
     process_data:
-        if(s_rtt_tx_channel < 0)
-            continue;
-        JLINK_RTTERMINAL_Write(s_rtt_tx_channel, data.data(), (int)data.size());
+    {
+        int ret;
+        ret = JLINK_RTTERMINAL_Write(s_rtt_tx_channel, data.data(), (int)data.size());
+        if(ret >= 0){
+            data.erase(data.begin(), data.begin() + ret);
+        }
+        // int ret = JLINK_RTTERMINAL_Write(s_rtt_tx_channel, data.data(), (int)data.size());
+        // std::printf("JLINK_RTTERMINAL_Write, tx_channel = %d, data.size() = %d ret = %d\n",
+        //      s_rtt_tx_channel, (int)data.size(), ret);
         continue;
+    }
     process_read:
         int len = JLINK_RTTERMINAL_Read(s_rtt_rx_channel, s_rtt_rx_buf, sizeof(s_rtt_rx_buf));
         if(len > 0){
             if(s_rx_cb)
-                s_rx_cb(s_rtt_rx_buf, len);
+                s_rx_cb(s_rtt_rx_buf, size_t(len));
         }else{
             read_state = RTT_RECV_IDLE;
         }
@@ -164,12 +177,14 @@ void jlink_rtt_stop(void){
     JLINK_RTTERMINAL_Control(RTT_CMD_STOP, NULL);
 }
 
-void jlink_rtt_set_recv_callback(void (*rx_cb)(char *data, int len)){
+void jlink_rtt_set_recv_callback(void (*rx_cb)(const char *data, size_t len)){
     s_rx_cb = rx_cb;
 }
 
-int jlink_rtt_transmit(char *data, int len){
+int jlink_rtt_transmit(const char *data, int len){
     std::unique_lock<std::mutex> lck(s_mtx);
+    if(s_rtt_tx_channel < 0)
+        return -1;
     s_rtt_rx_queue.push(std::vector<char>(data, data + len));
     s_cv.notify_one();
     return len;

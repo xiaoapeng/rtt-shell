@@ -21,12 +21,19 @@ set(TARGET_FLAGS
     "$<$<CONFIG:MinSizeRel>:-g;-Os>"
     "$<$<CONFIG:RelWithDebInfo>:-g;-Os>"
 )
+set(CPPTERMINAL_BUILD_EXAMPLES OFF)
+set(CPPTERMINAL_ENABLE_INSTALL  OFF)
+set(CPPTERMINAL_ENABLE_TESTING OFF)
+set(CPPTERMINAL_ENABLE_DOCS OFF)
+
+add_subdirectory(extern/cpp-terminal)
 
 add_executable(${PROJECT_NAME} 
     ${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/jlink_lib.c
     ${CMAKE_CURRENT_SOURCE_DIR}/src/jlink_find_lib.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/jlink_rtt.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/terminal_display_record.cpp
 )
 
 target_include_directories(${PROJECT_NAME} 
@@ -35,4 +42,4 @@ ${CMAKE_CURRENT_SOURCE_DIR}/src/inc)
 
 target_compile_options(${PROJECT_NAME} PRIVATE ${TARGET_FLAGS})
 
-# 准备链接jlink库
+target_link_libraries(${PROJECT_NAME} PRIVATE cpp-terminal::cpp-terminal)

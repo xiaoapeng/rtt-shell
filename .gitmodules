@@ -1,0 +1,3 @@
+[submodule "extern/cpp-terminal"]
+	path = extern/cpp-terminal
+	url = https://github.com/xiaoapeng/cpp-terminal.git

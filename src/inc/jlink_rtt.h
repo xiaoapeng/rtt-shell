@@ -38,7 +38,7 @@ extern void jlink_rtt_stop(void);
  * @brief  设置接收数据回调函数
  * @param  rx_cb            接收数据回调函数指针
  */
-extern void jlink_rtt_set_recv_callback(void (*rx_cb)(char *data, int len));
+extern void jlink_rtt_set_recv_callback(void (*rx_cb)(const char *data, size_t len));
 
 /**
  * @brief  发送数据到 J-Link RTT 缓冲区
@@ -46,7 +46,7 @@ extern void jlink_rtt_set_recv_callback(void (*rx_cb)(char *data, int len));
  * @param  len              要发送的数据长度
  * @return int              实际发送的数据长度, -1 失败
  */
-extern int jlink_rtt_transmit(char *data, int len);
+extern int jlink_rtt_transmit(const char *data, int len);
 
 
 

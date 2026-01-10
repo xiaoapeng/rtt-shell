@@ -24,11 +24,11 @@
     #define DYNLIB_CLOSE(handle) dlclose(handle)
 #endif
 
-static int (*jlink_emu_select_by_usbsn)(unsigned usbsn);
+static int (*jlink_emu_select_by_usbsn)(unsigned int usbsn);
 static int (*jlink_open)(void);
 static int (*jlink_close)(void);
-static int (*jlink_get_sn)(unsigned *sn);
-static int (*jlink_set_speed)(unsigned speed);
+static int (*jlink_get_sn)(unsigned int *sn);
+static int (*jlink_set_speed)(unsigned int speed);
 static int (*jlink_tif_select)(int tif);
 static int (*jlink_connect)(void);
 static int (*jlink_exec_command)(const char *in, char *out, int size);
@@ -39,7 +39,7 @@ static int (*jlink_rtterminal_write)(int channel, const char *data, int len);
 
 static DYNLIB_HANDLE jlink_lib_handle = NULL;
 
-int JLINK_EMU_SelectByUSBSN(unsigned usbsn){
+int JLINK_EMU_SelectByUSBSN(unsigned int usbsn){
     if(jlink_emu_select_by_usbsn){
         return jlink_emu_select_by_usbsn(usbsn);
     }
@@ -60,14 +60,14 @@ int JLINK_Close(void){
     return -1;
 }
 
-int JLINK_GetSN(unsigned *sn){
+int JLINK_GetSN(unsigned int *sn){
     if(jlink_get_sn){
         return jlink_get_sn(sn);
     }
     return -1;
 }
 
-int JLINK_SetSpeed(unsigned speed){
+int JLINK_SetSpeed(unsigned int speed){
     if(jlink_set_speed){
         return jlink_set_speed(speed);
     }
@@ -137,18 +137,18 @@ int jlink_lib_init(void){
         return -1;
     }
 
-    jlink_emu_select_by_usbsn = DYNLIB_GET(jlink_lib_handle, "JLINK_EMU_SelectByUSBSN");
-    jlink_open = DYNLIB_GET(jlink_lib_handle, "JLINK_Open");
-    jlink_close = DYNLIB_GET(jlink_lib_handle, "JLINK_Close");
-    jlink_get_sn = DYNLIB_GET(jlink_lib_handle, "JLINK_GetSN");
-    jlink_set_speed = DYNLIB_GET(jlink_lib_handle, "JLINK_SetSpeed");
-    jlink_tif_select = DYNLIB_GET(jlink_lib_handle, "JLINK_TIF_Select");
-    jlink_connect = DYNLIB_GET(jlink_lib_handle, "JLINK_Connect");
-    jlink_exec_command = DYNLIB_GET(jlink_lib_handle, "JLINK_ExecCommand");
-    jlink_emu_get_product_name = DYNLIB_GET(jlink_lib_handle, "JLINK_EMU_GetProductName");
-    jlink_rtterminal_control = DYNLIB_GET(jlink_lib_handle, "JLINK_RTTERMINAL_Control");
-    jlink_rtterminal_read = DYNLIB_GET(jlink_lib_handle, "JLINK_RTTERMINAL_Read");
-    jlink_rtterminal_write = DYNLIB_GET(jlink_lib_handle, "JLINK_RTTERMINAL_Write");
+    jlink_emu_select_by_usbsn = (void*) DYNLIB_GET(jlink_lib_handle, "JLINK_EMU_SelectByUSBSN");
+    jlink_open = (void*) DYNLIB_GET(jlink_lib_handle, "JLINK_Open");
+    jlink_close = (void*) DYNLIB_GET(jlink_lib_handle, "JLINK_Close");
+    jlink_get_sn = (void*) DYNLIB_GET(jlink_lib_handle, "JLINK_GetSN");
+    jlink_set_speed = (void*) DYNLIB_GET(jlink_lib_handle, "JLINK_SetSpeed");
+    jlink_tif_select = (void*) DYNLIB_GET(jlink_lib_handle, "JLINK_TIF_Select");
+    jlink_connect = (void*) DYNLIB_GET(jlink_lib_handle, "JLINK_Connect");
+    jlink_exec_command = (void*) DYNLIB_GET(jlink_lib_handle, "JLINK_ExecCommand");
+    jlink_emu_get_product_name = (void*) DYNLIB_GET(jlink_lib_handle, "JLINK_EMU_GetProductName");
+    jlink_rtterminal_control = (void*) DYNLIB_GET(jlink_lib_handle, "JLINK_RTTERMINAL_Control");
+    jlink_rtterminal_read = (void*) DYNLIB_GET(jlink_lib_handle, "JLINK_RTTERMINAL_Read");
+    jlink_rtterminal_write = (void*) DYNLIB_GET(jlink_lib_handle, "JLINK_RTTERMINAL_Write");
 
     if( !jlink_emu_select_by_usbsn || !jlink_open || 
         !jlink_close || !jlink_get_sn || !jlink_set_speed || !jlink_tif_select || 

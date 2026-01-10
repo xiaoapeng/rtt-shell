@@ -1,3 +1,7 @@
+// AI实现
+
+#define _CRT_SECURE_NO_WARNINGS
+
 #include <string>
 #include <vector>
 #include <array>
@@ -20,10 +24,10 @@ namespace fs = std::filesystem;
     #include <link.h>
 #endif
 
-static constexpr const char* JLINK_SDK_NAME = "libjlinkarm";
-static constexpr const char* JLINK_SDK_OBJECT = "jlinkarm";
-static constexpr const char* WINDOWS_32_JLINK_SDK_NAME = "JLinkARM";
-static constexpr const char* WINDOWS_64_JLINK_SDK_NAME = "JLink_x64";
+#define JLINK_SDK_NAME "libjlinkarm"
+#define JLINK_SDK_OBJECT "jlinkarm"
+#define WINDOWS_32_JLINK_SDK_NAME "JLinkARM"
+#define WINDOWS_64_JLINK_SDK_NAME "JLink_x64"
 
 // 获取适当的 Windows SDK 名称
 static const char* get_appropriate_windows_sdk_name() {
@@ -33,46 +37,118 @@ static const char* get_appropriate_windows_sdk_name() {
     return WINDOWS_32_JLINK_SDK_NAME;
 #endif
 }
+#if defined(_WIN32) || defined(_WIN64)
 
-// Windows 查找逻辑（参考 Python 的 find_library_windows）
-static std::optional<std::string> find_library_windows() {
-    const char* dll = get_appropriate_windows_sdk_name();
-    std::string dll_full = std::string(dll) + ".dll";
-    const char* root = "C:\\";
+static std::optional<std::string> read_registry_string(HKEY hKey, const std::string& subkey, 
+                                                const std::string& value_name) {
+    HKEY hSubKey = NULL;
+    if (RegOpenKeyExA(hKey, subkey.c_str(), 0, KEY_READ, &hSubKey) != ERROR_SUCCESS) {
+        return std::nullopt;
+    }
     
-    try {
-        for (const auto& entry : fs::directory_iterator(root)) {
-            if (!entry.is_directory()) continue;
-            
-            std::string dir_name = entry.path().filename().string();
-            
-            // 查找 Program Files 目录
-            if (dir_name.find("Program Files") == 0) {
-                fs::path dir_path = entry.path() / "SEGGER";
-                if (!fs::exists(dir_path) || !fs::is_directory(dir_path)) continue;
-                
-                // 查找所有 JLink 开头的目录
-                for (const auto& seg_entry : fs::directory_iterator(dir_path)) {
-                    if (!seg_entry.is_directory()) continue;
-                    
-                    std::string seg_dir_name = seg_entry.path().filename().string();
-                    if (seg_dir_name.find("JLink") == 0) {
-                        fs::path lib_path = seg_entry.path() / dll_full;
-                        if (fs::exists(lib_path) && fs::is_regular_file(lib_path)) {
-                            return lib_path.string();
-                        }
-                    }
-                }
-            }
-        }
-    } catch (const fs::filesystem_error&) {
-        // 忽略文件系统错误
+    char buffer[MAX_PATH] = {0};
+    DWORD buffer_size = sizeof(buffer);
+    DWORD type = 0;
+    
+    LONG result = RegQueryValueExA(hSubKey, value_name.c_str(), NULL, &type,
+                                   reinterpret_cast<LPBYTE>(buffer), &buffer_size);
+    RegCloseKey(hSubKey);
+    
+    if (result == ERROR_SUCCESS && type == REG_SZ) {
+        return std::string(buffer);
     }
     
     return std::nullopt;
 }
 
-// Linux 查找逻辑
+static bool check_jlink_directory(const fs::path& dir, const std::string& dll_full) {
+    if (!fs::exists(dir) || !fs::is_directory(dir)) {
+        return false;
+    }
+    
+    for (const auto& entry : fs::directory_iterator(dir)) {
+        if (!entry.is_directory()) continue;
+        
+        std::string dir_name = entry.path().filename().string();
+        if (dir_name.find("JLink") == 0) {
+            fs::path lib_path = entry.path() / dll_full;
+            if (fs::exists(lib_path) && fs::is_regular_file(lib_path)) {
+                return true;
+            }
+        }
+    }
+    
+    return false;
+}
+
+static std::optional<std::string> get_jlink_path_from_registry() {
+    static const std::vector<std::pair<HKEY, std::string>> registry_locations = {
+        {HKEY_LOCAL_MACHINE, "SOFTWARE\\SEGGER\\J-Link"},
+        {HKEY_LOCAL_MACHINE, "SOFTWARE\\Wow6432Node\\SEGGER\\J-Link"},
+        {HKEY_CURRENT_USER, "SOFTWARE\\SEGGER\\J-Link"}
+    };
+    
+    for (const auto& [hkey, subkey] : registry_locations) {
+        auto install_path = read_registry_string(hkey, subkey, "InstallPath");
+        if (install_path.has_value() && !install_path->empty()) {
+            return install_path;
+        }
+    }
+    
+    return std::nullopt;
+}
+
+static std::optional<std::string> find_library_windows() {
+    const char* dll = get_appropriate_windows_sdk_name();
+    std::string dll_full = std::string(dll) + ".dll";
+    
+    // 1. 首先尝试从注册表查找
+    auto registry_path = get_jlink_path_from_registry();
+    if (registry_path.has_value()) {
+        fs::path segger_path = *registry_path;
+        segger_path = segger_path.parent_path(); // 获取SEGGER目录
+        
+        if (check_jlink_directory(segger_path, dll_full)) {
+            for (const auto& entry : fs::directory_iterator(segger_path)) {
+                if (!entry.is_directory()) continue;
+                
+                std::string dir_name = entry.path().filename().string();
+                if (dir_name.find("JLink") == 0) {
+                    fs::path lib_path = entry.path() / dll_full;
+                    if (fs::exists(lib_path) && fs::is_regular_file(lib_path)) {
+                        return lib_path.string();
+                    }
+                }
+            }
+        }
+    }
+    
+    // 2. 查找常见的安装目录
+    static const std::vector<std::string> common_paths = {
+        "C:\\Program Files\\SEGGER",
+        "C:\\Program Files (x86)\\SEGGER"
+    };
+    
+    for (const auto& path : common_paths) {
+        if (check_jlink_directory(fs::path(path), dll_full)) {
+            for (const auto& entry : fs::directory_iterator(path)) {
+                if (!entry.is_directory()) continue;
+                
+                std::string dir_name = entry.path().filename().string();
+                if (dir_name.find("JLink") == 0) {
+                    fs::path lib_path = entry.path() / dll_full;
+                    if (fs::exists(lib_path) && fs::is_regular_file(lib_path)) {
+                        return lib_path.string();
+                    }
+                }
+            }
+        }
+    }
+    return std::nullopt;
+}
+#endif
+
+#if defined(__linux__)
 static std::optional<std::string> find_library_linux() {
     const char* dll = JLINK_SDK_NAME;
     fs::path root = "/opt/SEGGER";
@@ -123,7 +199,9 @@ static std::optional<std::string> find_library_linux() {
     
     return std::nullopt;
 }
+#endif
 
+#if defined(__APPLE__)  
 // macOS 查找逻辑
 static std::optional<std::string> find_library_darwin() {
     const char* dll = JLINK_SDK_NAME;
@@ -169,7 +247,7 @@ static std::optional<std::string> find_library_darwin() {
     
     return std::nullopt;
 }
-
+#endif
 // 尝试通过 ctypes 类似的方法查找（参考 Python 的 load_default）
 static std::optional<std::string> find_library_ctypes() {
 #if defined(_WIN32) || defined(_WIN64)
