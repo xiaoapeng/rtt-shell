@@ -18,6 +18,7 @@
 #include <atomic>
 
 #include "jlink_api.h"
+#include "jlink_rtt.h"
 
 #define RTT_FIND_BUFFER_MAX_RETRY_COUNT 100
 #define RTT_FIND_BUFFER_DOWN_MAX_RETRY_COUNT 10
@@ -47,25 +48,7 @@ static std::atomic<bool> s_ctrl_c_timeout_active{false};
 
 extern "C" { 
     static void (*s_rx_cb)(const char *data, size_t len) = nullptr;
-    static void (*s_err_cb)(void) = nullptr;
-}
-
-// 检查是否是单独的Ctrl+C信号
-static bool is_isolated_ctrl_c(const std::vector<char>& data) {
-    if (data.size() != 1 || data[0] != CTRL_C_CHAR) {
-        return false;
-    }
-    
-    auto now = std::chrono::steady_clock::now();
-    auto last_data = s_last_data_time.load();
-    
-    // 检查前后50ms内是否有其他数据
-    if (last_data != std::chrono::steady_clock::time_point{} &&
-        std::chrono::duration_cast<std::chrono::milliseconds>(now - last_data).count() < CTRL_C_ISOLATION_MS) {
-        return false;
-    }
-    
-    return true;
+    static void (*s_err_cb)(jlink_rtt_error_type_t error_type) = nullptr;
 }
 
 // 超时检测线程函数
@@ -80,7 +63,7 @@ static void timeout_thread(void) {
                 
                 // 超时发生，调用错误回调
                 if (s_err_cb) {
-                    s_err_cb();
+                    s_err_cb(RTT_ERROR_CTRL_C_TIMEOUT);
                 }
                 
                 // 重置状态
@@ -99,7 +82,12 @@ static void rtt_thread(void){
         RTT_RECV_IDLE = 0,
         RTT_RECV_TRY_READ = 1,
     };
+    enum rtt_write_state{
+        RTT_SEND_BLOCK = 0,
+        RTT_SEND_TRY_WRITE = 1,
+    };
     rtt_read_state read_state = RTT_RECV_TRY_READ;
+    rtt_write_state write_state = RTT_SEND_TRY_WRITE;
     std::vector<char> data;
     
     // 启动超时检测线程
@@ -108,7 +96,7 @@ static void rtt_thread(void){
     while(true){
         while(true){
             std::unique_lock<std::mutex> lck(s_mtx);
-            if(!s_rtt_rx_queue.empty() || !data.empty()){
+            if(write_state == RTT_SEND_TRY_WRITE && (!s_rtt_rx_queue.empty() || !data.empty())){
                 /* 合并queue里面的多个数据包到data */
                 while(!s_rtt_rx_queue.empty()){
                     data.insert(data.end(), s_rtt_rx_queue.front().begin(), s_rtt_rx_queue.front().end());
@@ -124,28 +112,21 @@ static void rtt_thread(void){
             
             s_cv.wait_for(lck,std::chrono::microseconds(100));
             read_state = RTT_RECV_TRY_READ;
+            write_state = RTT_SEND_TRY_WRITE;
         }
     process_data:
     {
-        // 检查是否是单独的Ctrl+C信号
-        if (is_isolated_ctrl_c(data)) {
-            s_ctrl_c_pending.store(true);
-            s_ctrl_c_sent_time.store(std::chrono::steady_clock::now());
-            s_ctrl_c_timeout_active.store(true);
-        }
-        
-        // 更新最后数据时间
-        s_last_data_time.store(std::chrono::steady_clock::now());
-        
         int ret;
         ret = JLINK_RTTERMINAL_Write(s_rtt_tx_channel, data.data(), (int)data.size());
-        if(ret >= 0){
+        if(ret > 0){
             data.erase(data.begin(), data.begin() + ret);
+        }else if(ret == 0){
+            write_state = RTT_SEND_BLOCK;
         }else{
             std::printf("JLINK_RTTERMINAL_Write, tx_channel = %d, data.size() = %d ret = %d\n",
                  s_rtt_tx_channel, (int)data.size(), ret);
             if(s_err_cb)
-                s_err_cb();
+                s_err_cb(RTT_ERROR_WRITE_FAILED);
         }
         continue;
     }
@@ -166,7 +147,7 @@ static void rtt_thread(void){
         }else{
             std::printf("JLINK_RTTERMINAL_Read, rx_channel = %d, len = %d\n", s_rtt_rx_channel, len);
             if(s_err_cb)
-                s_err_cb();
+                s_err_cb(RTT_ERROR_READ_FAILED);
         }
         continue;
     }
@@ -283,15 +264,43 @@ void jlink_rtt_set_recv_callback(void (*rx_cb)(const char *data, size_t len)){
     s_rx_cb = rx_cb;
 }
 
-void jlink_rtt_set_error_callback(void (*err_cb)(void)){
+void jlink_rtt_set_error_callback(void (*err_cb)(jlink_rtt_error_type_t error_type)){
     s_err_cb = err_cb;
 }
 
 
 int jlink_rtt_transmit(const char *data, int len){
-    std::unique_lock<std::mutex> lck(s_mtx);
-    if(s_rtt_tx_channel < 0)
+    
+    if(s_rtt_tx_channel < 0){
+        // 发送通道无效时，如果是单独的Ctrl+C信号，直接调用错误回调
+        if (len == 1 && data[0] == CTRL_C_CHAR && s_err_cb != nullptr)
+            s_err_cb(RTT_ERROR_TX_CHANNEL_INVALID);
         return -1;
+    }
+
+    std::unique_lock<std::mutex> lck(s_mtx);
+        
+    
+    // 检查是否是单独的Ctrl+C信号
+    if (len == 1 && data[0] == CTRL_C_CHAR) {
+        auto now = std::chrono::steady_clock::now();
+        auto last_data = s_last_data_time.load();
+        
+        // 检查前后50ms内是否有其他数据
+        if (last_data != std::chrono::steady_clock::time_point{} &&
+            std::chrono::duration_cast<std::chrono::milliseconds>(now - last_data).count() < CTRL_C_ISOLATION_MS) {
+            // 不是单独的Ctrl+C，正常处理
+        } else {
+            // 是单独的Ctrl+C信号
+            s_ctrl_c_pending.store(true);
+            s_ctrl_c_sent_time.store(now);
+            s_ctrl_c_timeout_active.store(true);
+        }
+    }
+    
+    // 更新最后数据时间
+    s_last_data_time.store(std::chrono::steady_clock::now());
+    
     s_rtt_rx_queue.push(std::vector<char>(data, data + len));
     s_cv.notify_one();
     return len;

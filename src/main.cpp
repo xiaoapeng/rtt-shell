@@ -25,6 +25,7 @@
 #include "jlink_rtt.h"
 #include "terminal_display_record.h"
 
+
 static std::atomic<bool> s_req_stop(false);
 
 static std::string to_lower_locale(const std::string& str, const std::locale& loc = std::locale()) {
@@ -33,7 +34,32 @@ static std::string to_lower_locale(const std::string& str, const std::locale& lo
                    [&loc](char c) { return std::tolower(c, loc); });
     return result;
 }
+
 static void terminal_display_record_quit_signal_handler(void){
+    s_req_stop.store(true);
+    Term::push_event(Term::Event());
+}
+
+static void terminal_rtt_err_handler(jlink_rtt_error_type_t error_type){
+    // 根据错误类型输出不同的信息
+    switch(error_type) {
+        case RTT_ERROR_CTRL_C_TIMEOUT:
+            std::cout << "Ctrl+C timeout: Target device may not support terminal or may have crashed, program will exit" << std::endl;
+            break;
+        case RTT_ERROR_READ_FAILED:
+            std::cout << "RTT read error: Connection may be lost, program will exit" << std::endl;
+            break;
+        case RTT_ERROR_WRITE_FAILED:
+            std::cout << "RTT write error: Connection may be lost, program will exit" << std::endl;
+            break;
+        case RTT_ERROR_TX_CHANNEL_INVALID:
+            std::cout << "Transmit channel invalid: Cannot send Ctrl+C signal, program will exit" << std::endl;
+            break;
+        default:
+            std::cout << "Unknown error, program will exit" << std::endl;
+            break;
+    }
+    
     s_req_stop.store(true);
     Term::push_event(Term::Event());
 }
@@ -107,6 +133,8 @@ int main(int argc, char* argv[])
         std::cout << "channel is invalid" << std::endl;
         return -1;
     }
+    rx_channel = channel[0];
+    tx_channel = channel[1];
 
     std::string log_file_path;
     const char *log_file_path_cstr = nullptr;
@@ -155,7 +183,7 @@ int main(int argc, char* argv[])
     Term::terminal.setOptions(Term::Option::Cooked, Term::Option::NoSignalKeys, Term::Option::Cursor);
 
     jlink_rtt_set_recv_callback(terminal_display_record_write);
-    jlink_rtt_set_error_callback(terminal_display_record_quit_signal_handler);
+    jlink_rtt_set_error_callback(terminal_rtt_err_handler);
     terminal_display_record_quit_signal_set_callback(terminal_display_record_quit_signal_handler);
     
     while(1)

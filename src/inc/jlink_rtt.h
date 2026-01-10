@@ -41,10 +41,20 @@ extern void jlink_rtt_stop(void);
 extern void jlink_rtt_set_recv_callback(void (*rx_cb)(const char *data, size_t len));
 
 /**
- * @brief  设置错误回调函数
- * @param  err_cb           错误回调函数指针
+ * @brief RTT错误类型枚举
  */
-extern void jlink_rtt_set_error_callback(void (*err_cb)(void));
+typedef enum {
+    RTT_ERROR_CTRL_C_TIMEOUT = 0,    ///< Ctrl+C超时错误
+    RTT_ERROR_READ_FAILED = 1,       ///< RTT读取错误
+    RTT_ERROR_WRITE_FAILED = 2,      ///< RTT写入错误
+    RTT_ERROR_TX_CHANNEL_INVALID = 3 ///< 发送通道无效错误
+} jlink_rtt_error_type_t;
+
+/**
+ * @brief  设置错误回调函数
+ * @param  err_cb           错误回调函数指针，参数为错误类型
+ */
+extern void jlink_rtt_set_error_callback(void (*err_cb)(jlink_rtt_error_type_t error_type));
 
 /**
  * @brief  发送数据到 J-Link RTT 缓冲区
