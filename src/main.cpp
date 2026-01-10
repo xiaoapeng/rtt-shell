@@ -155,6 +155,7 @@ int main(int argc, char* argv[])
     Term::terminal.setOptions(Term::Option::Cooked, Term::Option::NoSignalKeys, Term::Option::Cursor);
 
     jlink_rtt_set_recv_callback(terminal_display_record_write);
+    jlink_rtt_set_error_callback(terminal_display_record_quit_signal_handler);
     terminal_display_record_quit_signal_set_callback(terminal_display_record_quit_signal_handler);
     
     while(1)
