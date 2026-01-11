@@ -180,7 +180,7 @@ int main(int argc, char* argv[])
         goto terminal_display_record_start_error;
     }
 
-    Term::terminal.setOptions(Term::Option::Cooked, Term::Option::NoSignalKeys, Term::Option::Cursor);
+    Term::terminal.setOptions(Term::Option::NoMouseFocus, Term::Option::Raw, Term::Option::NoSignalKeys, Term::Option::Cursor);
 
     jlink_rtt_set_recv_callback(terminal_display_record_write);
     jlink_rtt_set_error_callback(terminal_rtt_err_handler);
