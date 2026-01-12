@@ -29,7 +29,7 @@ namespace fs = std::filesystem;
 #define WINDOWS_32_JLINK_SDK_NAME "JLinkARM"
 #define WINDOWS_64_JLINK_SDK_NAME "JLink_x64"
 
-// 获取适当的 Windows SDK 名称
+#if defined(_WIN32) || defined(_WIN64)
 static const char* get_appropriate_windows_sdk_name() {
 #if defined(_WIN64) || defined(__x86_64__) || defined(__ppc64__)
     return WINDOWS_64_JLINK_SDK_NAME;
@@ -37,7 +37,6 @@ static const char* get_appropriate_windows_sdk_name() {
     return WINDOWS_32_JLINK_SDK_NAME;
 #endif
 }
-#if defined(_WIN32) || defined(_WIN64)
 
 static std::optional<std::string> read_registry_string(HKEY hKey, const std::string& subkey, 
                                                 const std::string& value_name) {
