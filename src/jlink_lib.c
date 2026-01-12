@@ -24,19 +24,25 @@
     #define DYNLIB_CLOSE(handle) dlclose(handle)
 #endif
 
-static int (*jlink_emu_select_by_usbsn)(unsigned int usbsn);
-static int (*jlink_open)(void);
-static int (*jlink_close)(void);
-static int (*jlink_get_sn)(unsigned int *sn);
-static int (*jlink_set_speed)(unsigned int speed);
-static int (*jlink_tif_select)(int tif);
-static int (*jlink_connect)(void);
-static int (*jlink_exec_command)(const char *in, char *out, int size);
-static void (*jlink_emu_get_product_name)(char *out, int size);
-static int (*jlink_rtterminal_control)(int cmd, void *data);
-static int (*jlink_rtterminal_read)(int channel, char *data, int len);
-static int (*jlink_rtterminal_write)(int channel, const char *data, int len);
+#ifdef _WIN32
+  #define JLINK_CALL __stdcall
+#else
+  #define JLINK_CALL
+#endif
 
+static int  (JLINK_CALL *jlink_emu_select_by_usbsn)(unsigned int usbsn);
+static int  (JLINK_CALL *jlink_open)(void);
+static int  (JLINK_CALL *jlink_close)(void);
+static int  (JLINK_CALL *jlink_get_sn)(unsigned int *sn);
+static int  (JLINK_CALL *jlink_set_speed)(unsigned int speed);
+static int  (JLINK_CALL *jlink_tif_select)(int tif);
+static int  (JLINK_CALL *jlink_connect)(void);
+static int  (JLINK_CALL *jlink_exec_command)(const char *in, char *out, int size);
+static void (JLINK_CALL *jlink_emu_get_product_name)(char *out, int size);
+static int  (JLINK_CALL *jlink_rtterminal_control)(int cmd, void *data);
+static int  (JLINK_CALL *jlink_rtterminal_read)(int channel, char *data, int len);
+static int  (JLINK_CALL *jlink_rtterminal_write)(int channel, const char *data, int len);
+ 
 static DYNLIB_HANDLE jlink_lib_handle = NULL;
 
 int JLINK_EMU_SelectByUSBSN(unsigned int usbsn){

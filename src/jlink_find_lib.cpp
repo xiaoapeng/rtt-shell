@@ -81,21 +81,23 @@ static bool check_jlink_directory(const fs::path& dir, const std::string& dll_fu
     return false;
 }
 
-static std::optional<std::string> get_jlink_path_from_registry() {
+static std::vector<std::string> get_jlink_path_from_registry() {
     static const std::vector<std::pair<HKEY, std::string>> registry_locations = {
         {HKEY_LOCAL_MACHINE, "SOFTWARE\\SEGGER\\J-Link"},
         {HKEY_LOCAL_MACHINE, "SOFTWARE\\Wow6432Node\\SEGGER\\J-Link"},
         {HKEY_CURRENT_USER, "SOFTWARE\\SEGGER\\J-Link"}
     };
     
+    std::vector<std::string> found_paths;
+    
     for (const auto& [hkey, subkey] : registry_locations) {
         auto install_path = read_registry_string(hkey, subkey, "InstallPath");
         if (install_path.has_value() && !install_path->empty()) {
-            return install_path;
+            found_paths.push_back(*install_path);
         }
     }
     
-    return std::nullopt;
+    return found_paths;
 }
 
 static std::optional<std::string> find_library_windows() {
@@ -103,9 +105,9 @@ static std::optional<std::string> find_library_windows() {
     std::string dll_full = std::string(dll) + ".dll";
     
     // 1. 首先尝试从注册表查找
-    auto registry_path = get_jlink_path_from_registry();
-    if (registry_path.has_value()) {
-        fs::path segger_path = *registry_path;
+    auto registry_paths = get_jlink_path_from_registry();
+    for (const auto& registry_path : registry_paths) {
+        fs::path segger_path = registry_path;
         segger_path = segger_path.parent_path(); // 获取SEGGER目录
         
         if (check_jlink_directory(segger_path, dll_full)) {

@@ -1,0 +1,58 @@
+{
+  "version": 3,
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "CPPTERMINAL_BUILD_EXAMPLES": "OFF",
+        "CPPTERMINAL_ENABLE_INSTALL": "OFF",
+        "CPPTERMINAL_ENABLE_TESTING": "OFF",
+        "CPPTERMINAL_ENABLE_DOCS": "OFF"
+      }
+    },
+    {
+      "name": "win-x64-debug",
+      "displayName": "Windows x64 Debug (Clang)",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_C_FLAGS": "-m64 -g -O0",
+        "CMAKE_CXX_FLAGS": "-m64 -g -O0"
+      }
+    },
+    {
+      "name": "win-x86-debug",
+      "displayName": "Windows x86 Debug (Clang)",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_C_FLAGS": "-m32 -g -O0",
+        "CMAKE_CXX_FLAGS": "-m32 -g -O0"
+      }
+    },
+    {
+      "name": "win-x64-release",
+      "displayName": "Windows x64 Release (Clang)",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_C_FLAGS": "-m64",
+        "CMAKE_CXX_FLAGS": "-m64"
+      }
+    },
+    {
+      "name": "win-x86-release",
+      "displayName": "Windows x86 Release (Clang)",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_C_FLAGS": "-m32",
+        "CMAKE_CXX_FLAGS": "-m32"
+      }
+    }
+  ]
+}
