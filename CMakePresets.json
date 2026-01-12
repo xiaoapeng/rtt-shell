@@ -11,7 +11,58 @@
         "CPPTERMINAL_BUILD_EXAMPLES": "OFF",
         "CPPTERMINAL_ENABLE_INSTALL": "OFF",
         "CPPTERMINAL_ENABLE_TESTING": "OFF",
-        "CPPTERMINAL_ENABLE_DOCS": "OFF"
+        "CPPTERMINAL_ENABLE_DOCS": "OFF",
+        "BUILD_SHARED_LIBS": "OFF"
+      }
+    },
+    {
+      "name": "linux-base",
+      "hidden": true,
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_SYSTEM_NAME": "Linux",
+        "CMAKE_C_COMPILER": "zig;cc",
+        "CMAKE_CXX_COMPILER": "zig;c++"
+      }
+    },
+    {
+      "name": "linux-x64-debug",
+      "displayName": "Linux x64 Debug (Zig GLIBC 2.17)",
+      "inherits": "linux-base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_C_FLAGS": "-target x86_64-linux-gnu.2.17 -g",
+        "CMAKE_CXX_FLAGS": "-target x86_64-linux-gnu.2.17 -g"
+      }
+    },
+    {
+      "name": "linux-x64-release",
+      "displayName": "Linux x64 Release (Zig GLIBC 2.17)",
+      "inherits": "linux-base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_C_FLAGS": "-target x86_64-linux-gnu.2.17 -O3",
+        "CMAKE_CXX_FLAGS": "-target x86_64-linux-gnu.2.17 -O3"
+      }
+    },
+    {
+      "name": "linux-x86-debug",
+      "displayName": "Linux x86 Debug (Zig GLIBC 2.17)",
+      "inherits": "linux-base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_C_FLAGS": "-target x86-linux-gnu.2.17 -g",
+        "CMAKE_CXX_FLAGS": "-target x86-linux-gnu.2.17 -g"
+      }
+    },
+    {
+      "name": "linux-x86-release",
+      "displayName": "Linux x86 Release (Zig GLIBC 2.17)",
+      "inherits": "linux-base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_C_FLAGS": "-target x86-linux-gnu.2.17 -O3",
+        "CMAKE_CXX_FLAGS": "-target x86-linux-gnu.2.17 -O3"
       }
     },
     {
