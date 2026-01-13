@@ -1,0 +1,163 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'  # 当推送以 v 开头的标签时触发，例如 v1.0.0
+  workflow_dispatch:  # 允许手动触发
+
+env:
+  # 全局版本号，优先取标签名，手动触发时取分支名
+  VERSION: ${{ github.ref_name }}
+
+jobs:
+  build:
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - name: linux-x64
+            os: ubuntu-latest
+            preset: linux-x64-release
+            artifact_name: rtt-shell-linux-x64
+            executable: rtt-shell
+            archive_format: tar.gz
+            
+          - name: linux-x86
+            os: ubuntu-latest
+            preset: linux-x86-release
+            artifact_name: rtt-shell-linux-x86
+            executable: rtt-shell
+            archive_format: tar.gz
+            
+          - name: windows-x64
+            os: windows-latest
+            preset: win-x64-release
+            artifact_name: rtt-shell-windows-x64
+            executable: rtt-shell.exe
+            archive_format: zip
+            
+          - name: windows-x86
+            os: windows-latest
+            preset: win-x86-release
+            artifact_name: rtt-shell-windows-x86
+            executable: rtt-shell.exe
+            archive_format: zip
+
+    runs-on: ${{ matrix.os }}
+    name: Build ${{ matrix.name }}
+    # 强制所有步骤使用 bash，这样 Windows 也能用 cp, sed, mkdir -p
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Setup Zig (Linux only)
+      if: matrix.os == 'ubuntu-latest'
+      uses: goto-bus-stop/setup-zig@v2
+      with:
+        version: 0.13.0
+
+    - name: Set version in CMakePresets
+      run: |
+        # 去掉标签前缀 'v' 得到纯版本号
+        VERSION_STR=${GITHUB_REF#refs/tags/v}
+        echo "Updating version to: $VERSION_STR"
+        # 兼容性：在 Windows/Linux 统一使用 sed 修改
+        sed -i "s/\"CMAKE_RTT_SHELL_VERSION\": \".*\"/\"CMAKE_RTT_SHELL_VERSION\": \"$VERSION_STR\"/" CMakePresets.json
+
+    - name: Configure CMake
+      run: |
+        # 确保 zig 在 PATH 中（setup-zig 已自动处理）
+        cmake --preset ${{ matrix.preset }}
+
+    - name: Build
+      run: cmake --build build/${{ matrix.preset }} --config Release
+
+    - name: Prepare Release Directory
+      run: |
+        RELEASE_DIR="release/${{ matrix.artifact_name }}"
+        mkdir -p "$RELEASE_DIR"
+        
+        # 复制程序
+        cp build/${{ matrix.preset }}/${{ matrix.executable }} "$RELEASE_DIR/"
+        
+        # Linux 增加执行权限
+        if [ "${{ matrix.os }}" = "ubuntu-latest" ]; then
+          chmod +x "$RELEASE_DIR/${{ matrix.executable }}"
+        fi
+
+    - name: Create README
+      run: |
+        cat > release/${{ matrix.artifact_name }}/README.txt << EOF
+        RTT Shell - ${{ matrix.name }}
+        Version: ${{ env.VERSION }}
+        Build Date: $(date)
+        
+        Usage:
+        ./${{ matrix.executable }} --help
+        
+        Note:
+        This binary is statically linked for maximum compatibility.
+        EOF
+
+    - name: Create Archive
+      run: |
+        cd release
+        if [ "${{ matrix.archive_format }}" = "tar.gz" ]; then
+          tar -czf ${{ matrix.artifact_name }}.tar.gz ${{ matrix.artifact_name }}
+        else
+          # Windows 环境下 setup-zig 默认带了必要的工具，或者直接用 7z (Windows-latest 自带)
+          7z a ${{ matrix.artifact_name }}.zip ${{ matrix.artifact_name }}/
+        fi
+
+    - name: Upload Artifacts (Internal)
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ matrix.artifact_name }}
+        path: release/${{ matrix.artifact_name }}.${{ matrix.archive_format }}
+        retention-days: 1
+
+  release:
+    name: Publish to GitHub Releases
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+      packages: write
+    steps:
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: artifacts
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ github.ref_name }}
+        name: RTT Shell ${{ github.ref_name }}
+        body: |
+          ## RTT Shell ${{ github.ref_name }}
+          
+          跨平台 J-Link RTT 终端工具已自动构建完成。
+          
+          ### 变更日志
+          - 自动同步最新代码并完成静态链接编译。
+          - Linux 版本兼容 GLIBC 2.17+。
+          
+          ### 快速开始
+          1. 下载对应平台的压缩包。
+          2. 解压后在终端运行。
+        files: |
+          artifacts/rtt-shell-linux-x64/rtt-shell-linux-x64.tar.gz
+          artifacts/rtt-shell-linux-x86/rtt-shell-linux-x86.tar.gz
+          artifacts/rtt-shell-windows-x64/rtt-shell-windows-x64.zip
+          artifacts/rtt-shell-windows-x86/rtt-shell-windows-x86.zip
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

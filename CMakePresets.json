@@ -25,6 +25,15 @@
         "CMAKE_C_COMPILER": "zig;cc",
         "CMAKE_CXX_COMPILER": "zig;c++"
       }
+    },{
+      "name": "win-base",
+      "hidden": true,
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_SYSTEM_NAME": "Windows",
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++"
+      }
     },
     {
       "name": "linux-x64-debug",
@@ -69,7 +78,7 @@
     {
       "name": "win-x64-debug",
       "displayName": "Windows x64 Debug (Clang)",
-      "inherits": "base",
+      "inherits": "win-base",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "CMAKE_C_FLAGS": "-m64 -g -O0",
@@ -79,7 +88,7 @@
     {
       "name": "win-x86-debug",
       "displayName": "Windows x86 Debug (Clang)",
-      "inherits": "base",
+      "inherits": "win-base",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "CMAKE_C_FLAGS": "-m32 -g -O0",
@@ -89,7 +98,7 @@
     {
       "name": "win-x64-release",
       "displayName": "Windows x64 Release (Clang)",
-      "inherits": "base",
+      "inherits": "win-base",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "CMAKE_C_FLAGS": "-m64",
@@ -99,7 +108,7 @@
     {
       "name": "win-x86-release",
       "displayName": "Windows x86 Release (Clang)",
-      "inherits": "base",
+      "inherits": "win-base",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "CMAKE_C_FLAGS": "-m32",
