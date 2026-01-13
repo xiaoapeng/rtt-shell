@@ -101,7 +101,7 @@ int main(int argc, char* argv[])
         ("c,channel", "RTT channel number (rx,tx)", cxxopts::value<std::vector<int>>()->default_value("0,0"))
         ("a,addr", "RTT address (0xXXXXXXXX)", cxxopts::value<unsigned long>()->default_value("0"))
         ("r,range", "RTT range (0xXXXXXXXX)", cxxopts::value<unsigned long>()->default_value("0"))
-        ("t,time_record", "Log Time record")
+        ("v,version", "Print version")
         ("l,out_log", "Output log file name", cxxopts::value<std::string>())
         ;
 
@@ -109,6 +109,10 @@ int main(int argc, char* argv[])
 
     if(args.count("help")){
         std::cout << options.help() << std::endl;
+        return 0;
+    }
+    if(args.count("version")){
+        std::cout << "rtt-shell version: " << RTT_SHELL_VERSION << std::endl;
         return 0;
     }
     // if(!args.count("device")){

@@ -48,7 +48,7 @@ target_include_directories(${PROJECT_NAME}
 ${CMAKE_CURRENT_SOURCE_DIR}/src/inc)
 
 target_compile_options(${PROJECT_NAME} PRIVATE ${TARGET_FLAGS})
-
+target_compile_definitions(${PROJECT_NAME} PRIVATE RTT_SHELL_VERSION="${CMAKE_RTT_SHELL_VERSION}")
 if(WIN32)
     if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
 

@@ -12,7 +12,8 @@
         "CPPTERMINAL_ENABLE_INSTALL": "OFF",
         "CPPTERMINAL_ENABLE_TESTING": "OFF",
         "CPPTERMINAL_ENABLE_DOCS": "OFF",
-        "BUILD_SHARED_LIBS": "OFF"
+        "BUILD_SHARED_LIBS": "OFF",
+        "CMAKE_RTT_SHELL_VERSION": "local-Build"
       }
     },
     {
