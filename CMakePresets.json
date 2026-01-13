@@ -42,7 +42,8 @@
         "CMAKE_SYSTEM_NAME": "Darwin",
         "CMAKE_C_COMPILER": "clang",
         "CMAKE_CXX_COMPILER": "clang++",
-        "CMAKE_OSX_ARCHITECTURES": "x86_64;arm64" 
+        "CMAKE_OSX_ARCHITECTURES": "x86_64;arm64",
+        "CMAKE_OSX_DEPLOYMENT_TARGET": "11.0"
       }
     },
     {
