@@ -34,6 +34,16 @@
         "CMAKE_C_COMPILER": "clang",
         "CMAKE_CXX_COMPILER": "clang++"
       }
+    },{
+      "name": "macos-base",
+      "hidden": true,
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_SYSTEM_NAME": "Darwin",
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++",
+        "CMAKE_OSX_ARCHITECTURES": "x86_64;arm64" 
+      }
     },
     {
       "name": "linux-x64-debug",
@@ -113,6 +123,26 @@
         "CMAKE_BUILD_TYPE": "Release",
         "CMAKE_C_FLAGS": "-m32",
         "CMAKE_CXX_FLAGS": "-m32"
+      }
+    },
+    {
+      "name": "macos-universal-debug",
+      "displayName": "macOS Universal Debug (x64+arm64)",
+      "inherits": "macos-base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_C_FLAGS": "-g",
+        "CMAKE_CXX_FLAGS": "-g"
+      }
+    },
+    {
+      "name": "macos-universal-release",
+      "displayName": "macOS Universal Release (x64+arm64)",
+      "inherits": "macos-base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_C_FLAGS": "-O3",
+        "CMAKE_CXX_FLAGS": "-O3"
       }
     }
   ]
