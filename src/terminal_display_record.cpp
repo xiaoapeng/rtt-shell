@@ -244,6 +244,13 @@ reset:
 }
 
 
+static void terminal_display_try_update_timestamp(void){
+    if(s_is_new_line == false)
+        return ;
+    s_is_new_line = false;
+    s_linebuf_current_time_str = get_current_time_str();
+    std::cout << s_linebuf_current_time_str << ">>>  ";
+}
 
 static void terminal_display_record_process_data(std::vector<char>& data)
 {
@@ -253,11 +260,7 @@ static void terminal_display_record_process_data(std::vector<char>& data)
     for(auto c : data){
         ch = ehshell_escape_char_parse(c);
         if(ch <= 0xFF && (std::isprint(ch) || ch >= ESCAPE_CHAR_CTRL_UTF8_START)){
-            if(s_is_new_line){
-                s_is_new_line = false;
-                s_linebuf_current_time_str = get_current_time_str();
-                std::cout << s_linebuf_current_time_str << ">>>  ";
-            }
+            terminal_display_try_update_timestamp();
             std::cout << char(ch);
             /* 行buf s_linebuf_insert_pos处插入字符 */
             if (s_linebuf_insert_pos < s_linebuf.size()) {
@@ -280,15 +283,17 @@ static void terminal_display_record_process_data(std::vector<char>& data)
                 }
                 continue;
             case ESCAPE_CHAR_CTRL_TAB:
+                terminal_display_try_update_timestamp();
                 std::cout << "\t";
                 continue;
             case ESCAPE_CHAR_CTRL_J_LF:
+                terminal_display_try_update_timestamp();
                 std::cout << "\n";
                 s_linebuf.push_back('\0');
                 s_log_file << s_linebuf_current_time_str << ">>>  " << (const char*)s_linebuf.data() << "\n" << std::flush;
+                s_linebuf.clear();
                 s_linebuf_insert_pos = 0;
                 s_is_new_line = true;
-                s_linebuf.clear();
                 continue;
             case ESCAPE_CHAR_CTRL_M_CR:
                 std::cout << "\r" << s_linebuf_current_time_str << ">>>  ";
